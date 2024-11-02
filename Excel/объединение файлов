@@ -1,0 +1,88 @@
+Sub MergeFiles()
+    Dim sourceFile As Workbook
+    Dim targetFile As Workbook
+    Dim sourceSheet As Worksheet
+    Dim targetSheet As Worksheet
+    Dim filePath As String
+    Dim sheetName As String
+    Dim ws As Worksheet
+    Dim isNewSheet As Boolean
+    Dim excludedSheets As Variant
+    Dim cell As Range
+    Dim lastRow As Long
+    
+    ' Список исключенных листов
+    excludedSheets = Array("Time_Intervals", "List_STD", "List_ELEM")
+    
+    ' Открываем диалоговое окно для выбора файла
+    filePath = Application.GetOpenFilename("Excel Files (*.xlsx;*.xlsm;*.xlsb), *.xlsx;*.xlsm;*.xlsb", , "Выберите файл для объединения")
+    If filePath = "False" Then Exit Sub ' Если файл не выбран, выходим из макроса
+    
+    ' Открываем выбранный файл
+    Set targetFile = Workbooks.Open(filePath)
+    Set sourceFile = ThisWorkbook
+    
+    ' Проходим по всем листам во втором файле
+    For Each targetSheet In targetFile.Sheets
+        sheetName = targetSheet.Name
+        isNewSheet = True
+        
+        ' Проверяем, не входит ли лист в список исключенных
+        If Not IsExcludedSheet(sheetName, excludedSheets) Then
+            ' Проверяем, есть ли такой лист в исходном файле
+            For Each sourceSheet In sourceFile.Sheets
+                If sourceSheet.Name = sheetName Then
+                    ' Копируем значения из диапазона B2:M20
+                    sourceSheet.Range("B2:M20").Value = targetSheet.Range("B2:M20").Value
+                    ' Закрашиваем ярлык листа зеленым цветом
+                    sourceSheet.Tab.Color = RGB(0, 255, 0)
+                    isNewSheet = False
+                    Exit For
+                End If
+            Next sourceSheet
+            
+            ' Если лист новый, добавляем его в исходный файл
+            If isNewSheet Then
+                targetSheet.Copy after:=sourceFile.Sheets(sourceFile.Sheets.Count)
+            End If
+        End If
+    Next targetSheet
+    
+    ' Закрываем второй файл
+    targetFile.Close SaveChanges:=False
+    
+    ' Проходим по всем листам в исходном файле
+    For Each ws In sourceFile.Sheets
+        ' Проверяем, начинается ли название листа с "ELM"
+        If Left(ws.Name, 3) = "ELM" Then
+            ' Находим последнюю заполненную строку в столбце F
+            lastRow = ws.Cells(ws.Rows.Count, "F").End(xlUp).Row
+            
+            ' Проверяем, есть ли значения в столбце F
+            If lastRow > 1 Then
+                ' Проходим по всем ячейкам в столбце F начиная со второй строки
+                For Each cell In ws.Range("F2:F" & lastRow)
+                    ' Если ячейка не пустая, проставляем "УУП" в соответствующую ячейку столбца G
+                    If cell.Value <> "" Then
+                        cell.Offset(0, 1).Value = "УУП"
+                    End If
+                Next cell
+            End If
+        End If
+    Next ws
+    
+    MsgBox "Объединение завершено."
+End Sub
+
+Function IsExcludedSheet(sheetName As String, excludedSheets As Variant) As Boolean
+    Dim excludedSheet As Variant
+    IsExcludedSheet = False
+    
+    ' Проверяем, входит ли лист в список исключенных
+    For Each excludedSheet In excludedSheets
+        If sheetName = excludedSheet Then
+            IsExcludedSheet = True
+            Exit For
+        End If
+    Next excludedSheet
+End Function
