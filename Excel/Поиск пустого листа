@@ -1,0 +1,45 @@
+Sub CheckSheets()
+    Dim ws As Worksheet
+    Dim newSheet As Worksheet
+    Dim cellValue As String
+    Dim errorList As String
+    
+    ' Проверяем каждый лист в книге
+    For Each ws In ThisWorkbook.Sheets
+        If Left(ws.Name, 3) = "ELM" Then
+            cellValue = ws.Range("A1").Value
+            If cellValue <> "Компонент" Then
+                ws.Tab.Color = RGB(255, 0, 0) ' Окрашиваем ярлык листа в красный цвет
+                errorList = errorList & ws.Name & vbCrLf
+            End If
+        End If
+    Next ws
+    
+    ' Проверяем, есть ли ошибки
+    If errorList = "" Then
+        MsgBox "Проверка пройдена, все листы сформированы успешно.", vbInformation
+    Else
+        ' Создаем новый лист для вывода списка с именами листов
+        On Error Resume Next
+        Set newSheet = ThisWorkbook.Sheets("Ошибки")
+        If Not newSheet Is Nothing Then
+            Application.DisplayAlerts = False
+            newSheet.Delete
+            Application.DisplayAlerts = True
+        End If
+        On Error GoTo 0
+        
+        Set newSheet = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+        newSheet.Name = "Ошибки"
+        
+        ' Выводим список с именами листов, где A1 не равно "Компонент"
+        newSheet.Range("A1").Value = "Листы с ошибками:"
+        newSheet.Range("A2").Value = errorList
+        
+        ' Устанавливаем автоширину для столбца A
+        newSheet.Columns("A").AutoFit
+        
+        ' Устанавливаем лист с ошибками активным
+        newSheet.Activate
+    End If
+End Sub
