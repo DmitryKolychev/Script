@@ -1,0 +1,16 @@
+Private Sub Worksheet_Change(ByVal Target As Range)
+    On Error Resume Next
+    If Not Intersect(Target, Range("G2:G150")) Is Nothing And Target.Cells.Count = 1 Then
+        Application.EnableEvents = False
+        newVal = Target
+        Application.Undo
+        oldval = Target
+        If Len(oldval) <> 0 And oldval <> newVal Then
+            Target = oldval & ";" & vbLf & newVal
+        Else
+            Target = newVal
+        End If
+        If Len(newVal) = 0 Then Target.ClearContents
+        Application.EnableEvents = True
+    End If
+End Sub
