@@ -1,0 +1,57 @@
+Sub InsertFilesAsIcons()
+    Dim fDialog As FileDialog
+    Dim folderPath As String
+    Dim fileName As String
+    Dim doc As Document
+    Dim shp As Shape
+    Dim fileNames() As String
+    Dim i As Integer
+    Dim fileCount As Integer
+    
+    ' Создаем диалоговое окно для выбора папки
+    Set fDialog = Application.FileDialog(msoFileDialogFolderPicker)
+    
+    With fDialog
+        .Title = "Выберите папку с файлами"
+        .AllowMultiSelect = False
+        If .Show = -1 Then
+            folderPath = .SelectedItems(1)
+        Else
+            Exit Sub
+        End If
+    End With
+    
+    ' Открываем текущий документ
+    Set doc = ActiveDocument
+    
+    ' Устанавливаем путь к папке
+    folderPath = folderPath & "\"
+    
+    ' Собираем все имена файлов в массив
+    fileName = Dir(folderPath & "*.*")
+    fileCount = 0
+    Do While fileName <> ""
+        fileCount = fileCount + 1
+        ReDim Preserve fileNames(1 To fileCount)
+        fileNames(fileCount) = fileName
+        fileName = Dir
+    Loop
+    
+    ' Вставляем файлы в обратном порядке
+    For i = fileCount To 1 Step -1
+        ' Вставляем файл в виде значка
+        Set shp = doc.Shapes.AddOLEObject(FileName:=folderPath & fileNames(i), LinkToFile:=False, DisplayAsIcon:=True)
+        
+        ' Перемещаем курсор на новую строку
+        Selection.InsertAfter vbCrLf
+        
+        ' Вставляем название рисунка из имени файла без расширения
+        Selection.InsertAfter Left(fileNames(i), InStrRev(fileNames(i), ".") - 1) & vbCrLf
+        
+        ' Перемещаем курсор на новую строку
+        Selection.InsertAfter vbCrLf
+    Next i
+    
+    ' Возвращаем фокус на документ
+    doc.Activate
+End Sub
