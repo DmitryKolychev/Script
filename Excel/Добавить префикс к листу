@@ -1,0 +1,11 @@
+Sub RenameSheetsWithPrefix()
+    Dim ws As Worksheet
+    Dim i As Integer
+    
+    ' Начинаем с третьего листа
+    For i = 3 To ThisWorkbook.Sheets.Count
+        Set ws = ThisWorkbook.Sheets(i)
+        ' Добавляем префикс "ELM_" к имени листа
+        ws.Name = "ELM_" & ws.Name
+    Next i
+End Sub
