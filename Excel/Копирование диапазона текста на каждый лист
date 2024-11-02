@@ -1,0 +1,65 @@
+Sub CopyValuesFromAnotherFile()
+    Dim sourceWorkbook As Workbook
+    Dim targetWorkbook As Workbook
+    Dim sourceSheet As Worksheet
+    Dim targetSheet As Worksheet
+    Dim filePath As String
+    Dim sheetName As String
+    
+    ' Устанавливаем текущий файл как целевой
+    Set targetWorkbook = ThisWorkbook
+    
+    ' Открываем диалоговое окно для выбора другого файла
+    filePath = Application.GetOpenFilename("Excel Files (*.xls*), *.xls*", , "Выберите файл для копирования данных")
+    
+    ' Если файл не выбран, выходим из макроса
+    If filePath = "False" Then
+        MsgBox "Файл не выбран", vbExclamation
+        Exit Sub
+    End If
+    
+    ' Открываем выбранный файл
+    On Error GoTo ErrorHandler
+    Set sourceWorkbook = Workbooks.Open(filePath)
+    On Error GoTo 0
+    
+    ' Проходим по всем листам в исходном файле
+    For Each sourceSheet In sourceWorkbook.Sheets
+        sheetName = sourceSheet.Name
+        
+        ' Проверяем, не является ли лист одним из исключенных
+        If sheetName <> "List_ELEM" And sheetName <> "List_STD" And sheetName <> "Time_Intervals" Then
+            ' Проверяем, существует ли лист с таким же именем в целевом файле
+            On Error Resume Next
+            Set targetSheet = targetWorkbook.Sheets(sheetName)
+            On Error GoTo 0
+            
+            ' Если лист существует, копируем данные
+            If Not targetSheet Is Nothing Then
+                ' Проверяем, существует ли диапазон в исходном листе
+                If Application.WorksheetFunction.CountA(sourceSheet.Range("B2:J20")) > 0 Then
+                    sourceSheet.Range("B2:J20").Copy
+                    targetSheet.Range("B2:J20").PasteSpecial Paste:=xlPasteValues
+                    Application.CutCopyMode = False ' Снимаем выделение
+                    targetSheet.Range("A1").Select ' Снимаем выделение с диапазона
+                Else
+                    MsgBox "Диапазон B2:J20 в листе " & sheetName & " пуст.", vbExclamation
+                End If
+            Else
+                MsgBox "Лист " & sheetName & " не существует в целевом файле.", vbExclamation
+            End If
+            
+            ' Очищаем переменную targetSheet для следующей итерации
+            Set targetSheet = Nothing
+        End If
+    Next sourceSheet
+    
+    ' Закрываем исходный файл без сохранения изменений
+    sourceWorkbook.Close SaveChanges:=False
+    
+    MsgBox "Копирование завершено", vbInformation
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "Ошибка при открытии файла: " & Err.Description, vbCritical
+End Sub
