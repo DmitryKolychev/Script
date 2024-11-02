@@ -1,0 +1,22 @@
+Sub TrimELMText()
+    Dim ws As Worksheet
+    Dim cell As Range
+    Dim sheetName As String
+    
+    ' Проходим по всем листам
+    For Each ws In ThisWorkbook.Worksheets
+        sheetName = ws.Name
+        
+        ' Пропускаем листы Time_Intervals, List_STD и List_ELEM
+        If sheetName <> "Time_Intervals" And sheetName <> "List_STD" And sheetName <> "List_ELEM" Then
+            ' Проходим по всем ячейкам в столбце C
+            For Each cell In ws.Columns("C").Cells
+                ' Проверяем, начинается ли текст в ячейке с "ELM"
+                If Left(cell.Value, 3) = "ELM" Then
+                    ' Удаляем первые 20 символов
+                    cell.Value = Mid(cell.Value, 21)
+                End If
+            Next cell
+        End If
+    Next ws
+End Sub
