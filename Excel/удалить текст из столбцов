@@ -1,0 +1,20 @@
+Sub TrimELMText()
+    Dim ws As Worksheet
+    Dim cell As Range
+    Dim sheetName As String
+    
+    ' Проходим по всем листам
+    For Each ws In ThisWorkbook.Worksheets
+        sheetName = ws.Name
+        
+        ' Пропускаем листы Time_Intervals, List_STD и List_ELEM
+        If sheetName <> "Time_Intervals" And sheetName <> "List_STD" And sheetName <> "List_ELEM" Then
+            
+            ' Удаляем текст из столбцов K, L, M, начиная со строки 2
+            For Each cell In ws.Range("K2:M" & ws.Cells(ws.Rows.Count, "K").End(xlUp).Row)
+                cell.ClearContents
+            Next cell
+            
+        End If
+    Next ws
+End Sub
