@@ -1,0 +1,125 @@
+Sub funReportFMECA_2()
+    '
+    ' Создание WORD документа с таблицей FMEA по данным текущего Excel файла
+    '
+    Dim objWord As Object
+    Dim objDoc As Object
+    Dim myRange As Object
+    Dim myTbl As Object
+
+    Dim intSh As Integer
+    Dim intShMax As Integer
+    Dim intCnt As Integer
+    Dim intTblRow As Integer
+    Dim intValidRows As Integer ' Количество строк с данными
+
+    ' Обработка книги Excel
+    ' 1 количество компонентов (кол. листов минус два)
+    intShMax = ActiveWorkbook.Sheets.Count
+
+    ' Подсчет количества строк с данными (где в столбце Q стоит 1)
+    intValidRows = 0
+    For intSh = 4 To intShMax
+        intCnt = 2
+        Do Until IsEmpty(Sheets(intSh).Cells.Item(intCnt, 2))
+            If Sheets(intSh).Cells.Item(intCnt, 17).Value = 1 Then
+                intValidRows = intValidRows + 1
+            End If
+            intCnt = intCnt + 2
+        Loop
+    Next
+
+    ' Создание документа Word
+    Set objWord = CreateObject("Word.Application")
+    Set objDoc = objWord.Documents.Add
+
+    objDoc.PageSetup.Orientation = 1
+    objDoc.Paragraphs.Add
+    Set myRange = objDoc.Paragraphs.last.Range
+
+    ' Создание первой таблицы (шапка)
+    objDoc.Tables.Add myRange, 6, 3, True, True
+    Set myTbl = objDoc.Tables(1)
+
+    With myTbl
+        .ApplyStyleHeadingRows = True
+        .ApplyStyleLastRow = False
+        .ApplyStyleFirstColumn = True
+        .ApplyStyleLastColumn = False
+        .ApplyStyleRowBands = True
+        .ApplyStyleColumnBands = False
+    End With
+
+    ' Шапка таблицы FMECA
+    myTbl.cell(1, 2).Range.Text = "Анализ видов, последствий и критичности отказа"
+    myTbl.cell(3, 1).Range.Text = "Система:"
+    myTbl.cell(4, 1).Range.Text = "Подсистема:"
+    myTbl.cell(5, 1).Range.Text = "Объект ATA:"
+    myTbl.cell(6, 1).Range.Text = "Функция:"
+    myTbl.cell(3, 2).Range.Text = "Описание FMEСA:"
+    myTbl.cell(5, 2).Range.Text = "Исходный FTA:"
+    myTbl.cell(6, 2).Range.Text = "Автор:"
+    myTbl.cell(3, 3).Range.Text = "Дата:"
+    myTbl.cell(4, 3).Range.Text = "Лист    из     "
+    myTbl.cell(5, 3).Range.Text = "Файл:"
+    myTbl.cell(6, 3).Range.Text = "Версия:"
+
+    objDoc.Paragraphs.Add
+    Set myRange = objDoc.Paragraphs.last.Range
+
+    ' Создание второй таблицы (основная)
+    objDoc.Tables.Add myRange, intValidRows + 1, 12, True, True ' +1 для заголовка
+    Set myTbl = objDoc.Tables(2)
+
+    With myTbl
+        .ApplyStyleHeadingRows = True
+        .ApplyStyleLastRow = False
+        .ApplyStyleFirstColumn = True
+        .ApplyStyleLastColumn = False
+        .ApplyStyleRowBands = True
+        .ApplyStyleColumnBands = False
+    End With
+    myTbl.Rows.AllowBreakAcrossPages = False
+    myTbl.Rows(1).HeadingFormat = True
+
+    ' Шапка таблицы FMECA
+    myTbl.cell(1, 1).Range.Text = "Производитель"
+    myTbl.cell(1, 2).Range.Text = "Обозначение производителя (P/N)"
+    myTbl.cell(1, 3).Range.Text = "Номер компонента"
+    myTbl.cell(1, 4).Range.Text = "Компонент"
+    myTbl.cell(1, 5).Range.Text = "Номер вида отказа"
+    myTbl.cell(1, 6).Range.Text = "Вид отказа"
+    myTbl.cell(1, 7).Range.Text = "Интенсивность отказа (1/час)"
+    myTbl.cell(1, 8).Range.Text = "Этап полета"
+    myTbl.cell(1, 9).Range.Text = "Последствия отказа на систему и самолет"
+    myTbl.cell(1, 10).Range.Text = "Степень опасности"
+    myTbl.cell(1, 11).Range.Text = "Метод обнаружения"
+    myTbl.cell(1, 12).Range.Text = "Комментарии"
+
+    ' Заполняю таблицу Word
+    intTblRow = 2
+    For intSh = 4 To intShMax
+        intCnt = 2
+        Do Until IsEmpty(Sheets(intSh).Cells.Item(intCnt, 2))
+            ' Проверка значения в столбце Q
+            If Sheets(intSh).Cells.Item(intCnt, 17).Value = 1 Then
+                myTbl.cell(intTblRow, 1).Range.Text = Sheets(intSh).Cells.Item(7, 1)
+                myTbl.cell(intTblRow, 2).Range.Text = Sheets(intSh).Cells.Item(5, 1)
+                myTbl.cell(intTblRow, 3).Range.Text = Sheets(intSh).Name
+                myTbl.cell(intTblRow, 4).Range.Text = Sheets(intSh).Cells.Item(2, 1)
+                myTbl.cell(intTblRow, 5).Range.Text = Format(Sheets(intSh).Cells.Item(intCnt, 2), "000") & ""
+                myTbl.cell(intTblRow, 6).Range.Text = Sheets(intSh).Cells.Item(intCnt, 3) & ""
+                myTbl.cell(intTblRow, 7).Range.Text = Format(Sheets(intSh).Cells.Item(intCnt, 4), "0.000E-00") & ""
+                myTbl.cell(intTblRow, 8).Range.Text = Sheets(intSh).Cells.Item(intCnt, 5) & ""
+                myTbl.cell(intTblRow, 9).Range.Text = Sheets(intSh).Cells.Item(intCnt, 6) & ""
+                myTbl.cell(intTblRow, 10).Range.Text = Sheets(intSh).Cells.Item(intCnt, 7) & ""
+                myTbl.cell(intTblRow, 11).Range.Text = Sheets(intSh).Cells.Item(intCnt, 8) & ""
+                myTbl.cell(intTblRow, 12).Range.Text = Sheets(intSh).Cells.Item(intCnt, 9) & ""
+                intTblRow = intTblRow + 1
+            End If
+            intCnt = intCnt + 2
+        Loop
+    Next
+
+    objWord.Visible = True
+End Sub
