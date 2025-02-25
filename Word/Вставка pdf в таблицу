@@ -1,0 +1,70 @@
+Sub InsertFilesAsObjects()
+    Dim fldr As FileDialog
+    Dim selectedFolder As String
+    Dim file As Object
+    Dim fso As Object
+    Dim folder As Object
+    Dim doc As Document
+    Dim tbl As Table
+    Dim row As Integer
+    Dim filePath As String
+    
+    ' Инициализация объектов
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    
+    ' Открываем диалоговое окно для выбора директории
+    Set fldr = Application.FileDialog(msoFileDialogFolderPicker)
+    With fldr
+        .Title = "Выберите директорию"
+        .AllowMultiSelect = False
+        If .Show <> -1 Then Exit Sub ' Если пользователь отменил выбор
+        selectedFolder = .SelectedItems(1)
+    End With
+    
+    ' Получаем доступ к выбранной директории
+    Set folder = fso.GetFolder(selectedFolder)
+    
+    ' Создаем новый документ Word
+    Set doc = Documents.Add
+    Set tbl = doc.Tables.Add(Range:=doc.Range, NumRows:=1, NumColumns:=2)
+    
+    ' Заголовки таблицы
+    tbl.Cell(1, 1).Range.Text = "Наименование файла"
+    tbl.Cell(1, 2).Range.Text = "Объект"
+    
+    ' Перебираем все файлы в директории
+    row = 2
+    For Each file In folder.Files
+        On Error Resume Next ' Пропустить ошибки и продолжить выполнение
+        filePath = file.Path
+        
+        ' Проверяем, является ли файл допустимым
+        If Dir(filePath) <> "" Then
+            ' Добавляем строку в таблицу
+            tbl.Rows.Add
+            
+            ' Вставляем имя файла
+            tbl.Cell(row, 1).Range.Text = file.Name
+            
+            ' Вставляем объект (файл как объект)
+            tbl.Cell(row, 2).Range.Text = "" ' Очищаем ячейку перед вставкой объекта
+            tbl.Cell(row, 2).Range.InlineShapes.AddOLEObject _
+                ClassType:="Package", _
+                FileName:=filePath, _
+                DisplayAsIcon:=True, _
+                IconLabel:=file.Name
+            
+            ' Если произошла ошибка при вставке объекта, вставляем текст с ошибкой
+            If Err.Number <> 0 Then
+                tbl.Cell(row, 2).Range.Text = "Ошибка при вставке объекта"
+                Err.Clear
+            End If
+            
+            row = row + 1
+        End If
+        On Error GoTo 0 ' Сброс обработки ошибок
+    Next file
+    
+    ' Сообщение об успешном завершении
+    MsgBox "Файлы успешно добавлены в документ как объекты.", vbInformation
+End Sub
