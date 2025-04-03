@@ -1,0 +1,119 @@
+Sub SortSheetsByCategoryWithHyperlinks()
+    Dim ws As Worksheet
+    Dim catA As Worksheet, catB As Worksheet
+    Dim sourceWs As Worksheet
+    Dim lastRow As Long
+    Dim i As Long, j As Long
+    Dim isCategoryB As Boolean
+    Dim targetRowA As Long, targetRowB As Long
+    Dim cellValue As String
+    Dim keywords As Variant
+    
+    ' Ключевые слова для категории А
+    keywords = Array("УУП", "СС", "АС", "КС")
+    
+    ' Удаляем существующие листы, если они есть
+    Application.DisplayAlerts = False
+    On Error Resume Next
+    ThisWorkbook.Worksheets("кат А").Delete
+    ThisWorkbook.Worksheets("кат Б").Delete
+    On Error GoTo 0
+    Application.DisplayAlerts = True
+    
+    ' Создаем листы на позициях 4 и 5
+    Set catA = ThisWorkbook.Worksheets.Add(Before:=ThisWorkbook.Worksheets(4))
+    catA.Name = "кат А"
+    Set catB = ThisWorkbook.Worksheets.Add(Before:=ThisWorkbook.Worksheets(5))
+    catB.Name = "кат Б"
+    
+    ' Заголовки столбцов
+    catA.Range("A1:D1").Value = Array("ELM", "Наименование компонента", "P/N", "Производитель")
+    catB.Range("A1:D1").Value = Array("ELM", "Наименование компонента", "P/N", "Производитель")
+    
+    ' Форматируем заголовки
+    With catA.Range("A1")
+        .Font.Color = RGB(0, 0, 0)
+        .Font.Underline = xlUnderlineStyleNone
+    End With
+    With catB.Range("A1")
+        .Font.Color = RGB(0, 0, 0)
+        .Font.Underline = xlUnderlineStyleNone
+    End With
+    
+    targetRowA = 2
+    targetRowB = 2
+    
+    ' Перебираем все листы, начинающиеся с "ELM"
+    For Each ws In ThisWorkbook.Worksheets
+        If Left(ws.Name, 3) = "ELM" Then
+            Set sourceWs = ws
+            
+            ' Проверяем столбец G на наличие ключевых слов
+            isCategoryB = True
+            lastRow = sourceWs.Cells(sourceWs.Rows.Count, "G").End(xlUp).Row
+            
+            If lastRow >= 1 Then
+                For i = 1 To lastRow
+                    cellValue = UCase(Trim(sourceWs.Cells(i, "G").Value))
+                    
+                    For j = LBound(keywords) To UBound(keywords)
+                        If cellValue = UCase(keywords(j)) Then
+                            isCategoryB = False
+                            Exit For
+                        End If
+                    Next j
+                    
+                    If Not isCategoryB Then Exit For
+                Next i
+            End If
+            
+            ' Заполняем данные с гиперссылками
+            If isCategoryB Then
+                catB.Hyperlinks.Add _
+                    Anchor:=catB.Cells(targetRowB, 1), _
+                    Address:="", _
+                    SubAddress:="'" & sourceWs.Name & "'!A1", _
+                    TextToDisplay:=sourceWs.Name
+                catB.Cells(targetRowB, 2).Value = sourceWs.Range("A2").Value
+                catB.Cells(targetRowB, 3).Value = sourceWs.Range("A5").Value
+                catB.Cells(targetRowB, 4).Value = sourceWs.Range("A7").Value
+                targetRowB = targetRowB + 1
+            Else
+                catA.Hyperlinks.Add _
+                    Anchor:=catA.Cells(targetRowA, 1), _
+                    Address:="", _
+                    SubAddress:="'" & sourceWs.Name & "'!A1", _
+                    TextToDisplay:=sourceWs.Name
+                catA.Cells(targetRowA, 2).Value = sourceWs.Range("A2").Value
+                catA.Cells(targetRowA, 3).Value = sourceWs.Range("A5").Value
+                catA.Cells(targetRowA, 4).Value = sourceWs.Range("A7").Value
+                targetRowA = targetRowA + 1
+            End If
+        End If
+    Next ws
+    
+    ' Форматирование данных
+    With catA
+        .Columns("A:D").AutoFit
+        With .Range("A2:A" & .Cells(.Rows.Count, "A").End(xlUp).Row)
+            .Font.Color = RGB(0, 0, 255)
+            .Font.Underline = xlUnderlineStyleSingle
+        End With
+    End With
+    
+    With catB
+        .Columns("A:D").AutoFit
+        With .Range("A2:A" & .Cells(.Rows.Count, "A").End(xlUp).Row)
+            .Font.Color = RGB(0, 0, 255)
+            .Font.Underline = xlUnderlineStyleSingle
+        End With
+    End With
+    
+    ' Перемещаем листы на точные позиции 4 и 5
+    catA.Move Before:=ThisWorkbook.Worksheets(4)
+    catB.Move Before:=ThisWorkbook.Worksheets(5)
+    
+    MsgBox "Обработка завершена!" & vbCrLf & _
+           "Добавлено в ""кат А"": " & targetRowA - 2 & " записей" & vbCrLf & _
+           "Добавлено в ""кат Б"": " & targetRowB - 2 & " записей", vbInformation
+End Sub
