@@ -1,0 +1,48 @@
+Sub AggregateResources()
+    Dim t As Task
+    Dim resList As String
+    Dim resCollection As New Collection
+    Dim res As Assignment
+    Dim child As Task
+    
+    For Each t In ActiveProject.Tasks
+        If t.Summary Then
+            resList = ""
+            On Error Resume Next ' Игнорировать ошибки при добавлении в коллекцию
+            For Each child In t.OutlineChildren
+                For Each res In child.Assignments
+                    If Not IsEmpty(res.ResourceName) Then
+                        ' Проверяем, есть ли ресурс уже в коллекции
+                        Dim exists As Boolean
+                        exists = False
+                        Dim i As Integer
+                        For i = 1 To resCollection.Count
+                            If resCollection(i) = res.ResourceName Then
+                                exists = True
+                                Exit For
+                            End If
+                        Next i
+                        If Not exists Then
+                            resCollection.Add res.ResourceName
+                        End If
+                    End If
+                Next res
+            Next child
+            
+            ' Формируем строку с уникальными ресурсами
+            For i = 1 To resCollection.Count
+                If resList = "" Then
+                    resList = resCollection(i)
+                Else
+                    resList = resList & ", " & resCollection(i)
+                End If
+            Next i
+            
+            ' Записываем результат в поле "Текст1"
+            t.Text1 = resList
+            
+            ' Очищаем коллекцию для следующей задачи
+            Set resCollection = New Collection
+        End If
+    Next t
+End Sub
