@@ -1,0 +1,77 @@
+Sub ШиринаТаблиц()
+    Dim tbl As Table
+    Dim maxWidth As Single
+    Dim currentWidth As Single
+    Dim tablesProcessed As Integer
+    Dim tablesAdjusted As Integer
+    Dim reportMessage As String
+    Dim i As Integer
+    
+    ' Максимальная ширина таблицы (16.5 см)
+    maxWidth = 16.5 * 28.35 ' Конвертация в пункты (1 см = 28.35 пунктов)
+    
+    tablesProcessed = 0
+    tablesAdjusted = 0
+    
+    Application.ScreenUpdating = False
+    
+    ' Обрабатываем все таблицы в документе
+    For Each tbl In ActiveDocument.Tables
+        tablesProcessed = tablesProcessed + 1
+        
+        ' Надежный способ определения ширины таблицы
+        On Error Resume Next
+        currentWidth = 0
+        If tbl.PreferredWidthType = wdPreferredWidthPercent Then
+            ' Для таблиц с шириной в процентах
+            currentWidth = ActiveDocument.PageSetup.PageWidth * (tbl.PreferredWidth / 100)
+        Else
+            ' Для таблиц с абсолютной шириной
+            currentWidth = tbl.PreferredWidth
+        End If
+        
+        ' Альтернативный метод, если предыдущие не сработали
+        If currentWidth <= 0 Then
+            currentWidth = 0
+            For i = 1 To tbl.Columns.Count
+                currentWidth = currentWidth + tbl.Columns(i).Width
+            Next i
+        End If
+        On Error GoTo 0
+        
+        ' Проверяем, превышает ли таблица максимальную ширину
+        If currentWidth > maxWidth Then
+            tablesAdjusted = tablesAdjusted + 1
+            
+            ' 1. Пробуем автоматическую подгонку
+            tbl.AutoFitBehavior wdAutoFitWindow
+            tbl.AllowAutoFit = True
+            
+            ' 2. Устанавливаем ширину 100% от доступного пространства
+            tbl.PreferredWidthType = wdPreferredWidthPercent
+            tbl.PreferredWidth = 100
+            
+            ' 3. Выравниваем таблицу по центру (альтернативный метод)
+            tbl.Rows.Alignment = wdAlignRowCenter
+            tbl.Select
+            Selection.ParagraphFormat.Alignment = wdAlignParagraphCenter
+        End If
+        
+    Next tbl
+    
+    Application.ScreenUpdating = True
+    
+    ' Формируем итоговый отчет
+    If tablesProcessed = 0 Then
+        reportMessage = "В документе не найдено таблиц."
+    Else
+        reportMessage = "ОТЧЕТ О КОРРЕКТИРОВКЕ ТАБЛИЦ" & vbCrLf & _
+                       "Максимальная ширина: 16,5 см" & vbCrLf & _
+                       "Обработано таблиц: " & tablesProcessed & vbCrLf & _
+                       "Скорректировано: " & tablesAdjusted & vbCrLf & vbCrLf
+                       
+    End If
+    
+    ' Выводим результат
+    MsgBox reportMessage, vbInformation, "Корректировка ширины таблиц"
+End Sub
