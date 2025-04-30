@@ -1,0 +1,46 @@
+Sub ResizeImagesToMaxWidth()
+    Dim shp As Shape
+    Dim maxWidth As Single
+    Dim ratio As Single
+    
+    ' Максимальная ширина в см (16.5 см)
+    maxWidth = 16.5
+    
+    ' Перевести сантиметры в пункты (1 см = 28.35 пунктов)
+    maxWidth = maxWidth * 28.35
+    
+    Application.ScreenUpdating = False
+    
+    ' Проверяем все фигуры в документе
+    For Each shp In ActiveDocument.Shapes
+        ' Проверяем, является ли фигура рисунком или графическим объектом
+        If shp.Type = msoPicture Or shp.Type = msoLinkedPicture Or _
+           shp.Type = msoAutoShape Or shp.Type = msoGraphic Then
+           
+            ' Если ширина превышает максимальную
+            If shp.Width > maxWidth Then
+                ' Вычисляем коэффициент соотношения
+                ratio = shp.Height / shp.Width
+                ' Устанавливаем новую ширину
+                shp.Width = maxWidth
+                ' Меняем высоту с сохранением пропорций
+                shp.Height = maxWidth * ratio
+            End If
+        End If
+    Next shp
+    
+    ' Также проверяем InlineShape (встроенные изображения)
+    Dim inlineShp As InlineShape
+    For Each inlineShp In ActiveDocument.InlineShapes
+        If inlineShp.Type = wdInlineShapePicture Then
+            If inlineShp.Width > maxWidth Then
+                ratio = inlineShp.Height / inlineShp.Width
+                inlineShp.Width = maxWidth
+                inlineShp.Height = maxWidth * ratio
+            End If
+        End If
+    Next inlineShp
+    
+    Application.ScreenUpdating = True
+    MsgBox "Обработка изображений завершена!", vbInformation
+End Sub
