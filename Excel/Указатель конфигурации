@@ -1,0 +1,197 @@
+Sub FileList()
+    Dim v As String
+    Dim BrowseFolder As String
+    Dim ScanLevel As Integer
+    Dim CalculateHash As VbMsgBoxResult
+    Dim IncludeMD5 As Boolean
+    Dim IncludeSHA256 As Boolean
+    
+    ' Открываем диалоговое окно выбора папки
+    With Application.FileDialog(msoFileDialogFolderPicker)
+        .Title = "Выберите папку или диск"
+        .Show
+        On Error Resume Next
+        Err.Clear
+        v = .SelectedItems(1)
+        If Err.Number <> 0 Then
+            MsgBox "Вы ничего не выбрали!"
+            Exit Sub
+        End If
+    End With
+    BrowseFolder = CStr(v)
+    
+    ' Открываем диалоговое окно для выбора уровня сканирования
+    ScanLevel = Application.InputBox( _
+        "Выберите уровень папок для отображения в первых столбцах таблицы:" & vbCrLf & _
+        vbCrLf & _
+        "1 - Первый столбец: 1, 2, 3; Второй столбец: 1.1, 1.2, 1.3" & vbCrLf & _
+        vbCrLf & _
+        "2 - Первый столбец: 1.1, 1.2, 1.3; Второй столбец: 1.1.1, 1.1.2, 1.1.3", _
+    "Отображаемые папки", 1, Type:=1)
+    If ScanLevel < 1 Or ScanLevel > 2 Then
+        MsgBox "Неверный уровень сканирования!"
+        Exit Sub
+    End If
+    
+    ' Открываем диалоговое окно для выбора расчета хеш-суммы MD5
+    CalculateHash = MsgBox("Рассчитать хеш-сумму MD5?", vbYesNo + vbQuestion, "Хеш-сумма")
+    IncludeMD5 = (CalculateHash = vbYes)
+    
+    ' Открываем диалоговое окно для выбора расчета хеш-суммы SHA256
+    CalculateHash = MsgBox("Рассчитать хеш-сумму SHA256?", vbYesNo + vbQuestion, "Хеш-сумма")
+    IncludeSHA256 = (CalculateHash = vbYes)
+    
+    ' Добавляем лист и выводим на него шапку таблицы
+    ActiveWorkbook.Sheets.Add
+    With Range("A1:T1")
+        .Font.Bold = True
+        .Font.Size = 12
+    End With
+    Cells(1, 1).Value = IIf(ScanLevel = 1, "Папка_1", "Папка_2")
+    Cells(1, 2).Value = IIf(ScanLevel = 1, "Папка_2", "Папка_3")
+    Cells(1, 3).Value = "Ссылка на папку"
+    Cells(1, 4).Value = "Ссылка на файл"
+    Cells(1, 5).Value = "Имя файла"
+    Cells(1, 6).Value = "Номер документа"
+    Cells(1, 7).Value = "Наименование документа"
+    Cells(1, 8).Value = "Версия"
+    Cells(1, 9).Value = "Статус"
+    Cells(1, 10).Value = "Примечание_ВИО"
+    Cells(1, 11).Value = "Примечание_ИО"
+    Cells(1, 12).Value = "Примечание_СИ"
+    Cells(1, 13).Value = "Модификация ВС"
+    Cells(1, 14).Value = "Тип файла"
+    Cells(1, 15).Value = "Размер"
+    Cells(1, 16).Value = "Дата размещения под УК"
+    Cells(1, 17).Value = "Дата изменения"
+    Cells(1, 18).Value = "Хеш-сумма (MD5)"
+    Cells(1, 19).Value = "Хеш-сумма (SHA 256)"
+    Cells(1, 20).Value = "Путь к файлу"
+    
+    ' Вызываем процедуру вывода списка файлов
+    ListFilesInFolder_1 BrowseFolder, True, ScanLevel, IncludeMD5, IncludeSHA256
+    
+    ' Форматирование таблицы
+    Call FormatTable
+End Sub
+
+Private Sub ListFilesInFolder_1(ByVal SourceFolderName As String, ByVal IncludeSubfolders As Boolean, ByVal ScanLevel As Integer, ByVal IncludeMD5 As Boolean, ByVal IncludeSHA256 As Boolean)
+    Application.ScreenUpdating = False
+    Dim FSO As Object
+    Dim SubFolder As Object
+    Dim FileItem As Object
+    Dim SourceFolder As Object
+    Dim r As Long
+    Dim workbookPath As String
+    Dim pathParts() As String
+    Dim relativePath As String
+    
+    On Error GoTo ErrorHandler
+    
+    ' Получаем путь к местоположению книги Excel
+    workbookPath = ThisWorkbook.Path
+    
+    Set FSO = CreateObject("Scripting.FileSystemObject")
+    Set SourceFolder = FSO.getfolder(SourceFolderName)
+    
+    r = Range("A2000").End(xlUp).Row + 1
+    
+    ' Выводим данные по файлу
+    For Each FileItem In SourceFolder.Files
+        ' Проверка корректности пути
+        If Len(FileItem.Path) > Len(workbookPath) Then
+            relativePath = Mid(FileItem.Path, Len(workbookPath) + 2)
+            pathParts = Split(relativePath, "\")
+            
+            ' Заполняем данные с проверкой на существование элементов массива
+            If UBound(pathParts) >= ScanLevel Then
+                Cells(r, 1).Value = pathParts(ScanLevel - 1)
+            End If
+            
+            If UBound(pathParts) >= ScanLevel Then
+                Cells(r, 2).Value = pathParts(ScanLevel)
+            End If
+            
+            Cells(r, 3).Formula = "=HYPERLINK(" & Chr(34) & ".\" & Mid(SourceFolder.Path, Len(workbookPath) + 2) & Chr(34) & ", ""папка"")"
+            Cells(r, 4).Formula = "=HYPERLINK(" & Chr(34) & ".\" & relativePath & Chr(34) & ", ""файл"")"
+            Cells(r, 5).Value = FileItem.Name
+            
+            ' Очистка дублирующихся данных
+            If Cells(r, 1).Value = Cells(r, 2).Value Then Cells(r, 2).ClearContents
+            If Cells(r, 5).Value = Cells(r, 2).Value Then Cells(r, 2).ClearContents
+            
+            ' Дополнительные данные о файле
+            Cells(r, 14).Value = FileItem.Type
+            Cells(r, 15).Value = FileItem.Size
+            Cells(r, 16).Value = FileItem.DateCreated
+            Cells(r, 17).Value = FileItem.DateLastModified
+            If IncludeMD5 Then Cells(r, 18).Value = GetMD5(FileItem.Path)
+            If IncludeSHA256 Then Cells(r, 19).Value = GetSHA256(FileItem.Path)
+            Cells(r, 20).Value = relativePath
+            
+            r = r + 1
+        End If
+    Next FileItem
+    
+    ' Вызываем процедуру повторно для каждой вложенной папки
+    If IncludeSubfolders Then
+        For Each SubFolder In SourceFolder.SubFolders
+            ListFilesInFolder_1 SubFolder.Path, True, ScanLevel, IncludeMD5, IncludeSHA256
+        Next SubFolder
+    End If
+  
+    ' Очистка объектов
+    Set FileItem = Nothing
+    Set SourceFolder = Nothing
+    Set FSO = Nothing
+    Application.ScreenUpdating = True
+    Exit Sub
+
+ErrorHandler:
+    ' Обработка ошибок
+    MsgBox "Ошибка при обработке файла: " & FileItem.Path & ". Описание ошибки: " & Err.Description
+    Resume Next
+End Sub
+
+Sub FormatTable()
+    ' Создаем таблицу
+    Dim a As Long
+    a = Cells(1, 1).CurrentRegion.Rows.Count
+    On Error Resume Next
+    ActiveSheet.ListObjects.Add(xlSrcRange, Range(Cells(1, 1), Cells(a, 20)), , xlYes).Name = "Таблица1"
+    On Error GoTo 0
+       
+    ' Настройка ширины столбцов
+    Columns(1).ColumnWidth = 23
+    Columns(2).ColumnWidth = 36
+    Columns(3).ColumnWidth = 9
+    Columns(4).ColumnWidth = 9
+    Columns(5).ColumnWidth = 52
+    Range(Columns(6), Columns(19)).AutoFit
+    Columns(20).ColumnWidth = 18
+    
+    ' Настройка переноса текста
+    Columns(1).WrapText = True
+    Columns(2).WrapText = True
+    Columns(5).WrapText = True
+    Columns(6).WrapText = True
+    Columns(7).WrapText = True
+    Columns(10).WrapText = True
+    Columns(11).WrapText = True
+End Sub
+
+Function GetMD5(ByVal FilePath As String) As String
+    On Error Resume Next
+    GetMD5 = Split(CreateObject("WScript.Shell"). _
+        Exec("Certutil -hashfile """ & FilePath & """ MD5").StdOut.ReadAll, vbCrLf)(1)
+    If Err.Number <> 0 Then GetMD5 = "Error"
+    On Error GoTo 0
+End Function
+
+Function GetSHA256(ByVal FilePath As String) As String
+    On Error Resume Next
+    GetSHA256 = Split(CreateObject("WScript.Shell"). _
+        Exec("Certutil -hashfile """ & FilePath & """ SHA256").StdOut.ReadAll, vbCrLf)(1)
+    If Err.Number <> 0 Then GetSHA256 = "Error"
+    On Error GoTo 0
+End Function
