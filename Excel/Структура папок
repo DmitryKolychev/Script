@@ -1,0 +1,49 @@
+
+Sub CreateFolders()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim folderPath As String
+    Dim subFolderPath As String
+    Dim folderName As String
+    Dim subFolderName As String
+    Dim level As String
+    Dim parentFolder As String
+    Dim dict As Object
+    
+    ' Устанавливаем ссылку на лист
+    Set ws = ThisWorkbook.Sheets("структура")
+    
+    ' Определяем последнюю строку с данными
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+    
+    ' Создаем словарь для хранения родительских папок
+    Set dict = CreateObject("Scripting.Dictionary")
+    
+    ' Получаем путь к директории, где находится файл
+    folderPath = ThisWorkbook.Path & "\"
+    
+    ' Проходим по всем строкам с данными
+    For i = 2 To lastRow
+        level = ws.Cells(i, "A").Value
+        'folderName = ws.Cells(i, "B").Value
+        folderName = level & " " & ws.Cells(i, "B").Value
+        
+        ' Определяем родительскую папку
+        If InStr(level, ".") > 0 Then
+            parentFolder = Left(level, InStr(level, ".") - 1)
+            subFolderName = Mid(level, InStr(level, ".") + 1)
+            subFolderPath = dict(parentFolder) & "\" & folderName
+        Else
+            subFolderPath = folderPath & folderName
+        End If
+        
+        ' Создаем папку
+        If Dir(subFolderPath, vbDirectory) = "" Then
+            MkDir subFolderPath
+        End If
+        
+        ' Добавляем путь к папке в словарь
+        dict(level) = subFolderPath
+    Next i
+End Sub
