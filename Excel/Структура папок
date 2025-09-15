@@ -1,49 +1,111 @@
-
-Sub CreateFolders()
+Sub CreateMultiLevelFolders()
     Dim ws As Worksheet
     Dim lastRow As Long
     Dim i As Long
+    Dim basePath As String
     Dim folderPath As String
-    Dim subFolderPath As String
     Dim folderName As String
-    Dim subFolderName As String
-    Dim level As String
-    Dim parentFolder As String
+    Dim currentLevel As String
     Dim dict As Object
     
-    ' Устанавливаем ссылку на лист
+    ' Устанавливаем обработку ошибок
+    On Error GoTo ErrorHandler
+    
+    ' Проверяем существование листа
     Set ws = ThisWorkbook.Sheets("структура")
     
-    ' Определяем последнюю строку с данными
+    ' Определяем последнюю строку
     lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+    If lastRow < 2 Then
+        MsgBox "Нет данных для обработки!", vbInformation
+        Exit Sub
+    End If
     
-    ' Создаем словарь для хранения родительских папок
+    ' Создаем словарь для хранения путей
     Set dict = CreateObject("Scripting.Dictionary")
     
-    ' Получаем путь к директории, где находится файл
-    folderPath = ThisWorkbook.Path & "\"
+    ' Базовый путь
+    basePath = ThisWorkbook.path
+    If Right(basePath, 1) <> "\" Then basePath = basePath & "\"
     
-    ' Проходим по всем строкам с данными
+    ' Обрабатываем строки
     For i = 2 To lastRow
-        level = ws.Cells(i, "A").Value
-        'folderName = ws.Cells(i, "B").Value
-        folderName = level & " " & ws.Cells(i, "B").Value
+        currentLevel = Trim(ws.Cells(i, "A").Value)
+        If currentLevel = "" Then GoTo NextRow
         
-        ' Определяем родительскую папку
-        If InStr(level, ".") > 0 Then
-            parentFolder = Left(level, InStr(level, ".") - 1)
-            subFolderName = Mid(level, InStr(level, ".") + 1)
-            subFolderPath = dict(parentFolder) & "\" & folderName
-        Else
-            subFolderPath = folderPath & folderName
+        ' Формируем имя папки
+        folderName = currentLevel & " " & Trim(ws.Cells(i, "B").Value)
+        
+        ' Очищаем имя от недопустимых символов
+        folderName = CleanFileName(folderName)
+        
+        ' Определяем путь для папки
+        folderPath = DetermineFolderPath(currentLevel, folderName, basePath, dict)
+        
+        ' Создаем папку если не существует
+        If Not FolderExists(folderPath) Then
+            CreateFolder folderPath
         End If
         
-        ' Создаем папку
-        If Dir(subFolderPath, vbDirectory) = "" Then
-            MkDir subFolderPath
-        End If
+        ' Сохраняем путь в словаре
+        dict(currentLevel) = folderPath
         
-        ' Добавляем путь к папке в словарь
-        dict(level) = subFolderPath
+NextRow:
     Next i
+    
+    MsgBox "Структура папок успешно создана! Обработано " & (lastRow - 1) & " записей.", vbInformation
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "Ошибка: " & Err.Description & vbCrLf & "Строка: " & i, vbCritical
+End Sub
+
+Function DetermineFolderPath(level As String, folderName As String, basePath As String, dict As Object) As String
+    Dim lastDotPosition As Long
+    
+    ' Находим позицию последней точки в уровне
+    lastDotPosition = InStrRev(level, ".")
+    
+    ' Если точки нет - это корневой уровень
+    If lastDotPosition = 0 Then
+        DetermineFolderPath = basePath & folderName
+        Exit Function
+    End If
+    
+    ' Извлекаем родительский уровень (все до последней точки)
+    Dim parentLevel As String
+    parentLevel = Left(level, lastDotPosition - 1)
+    
+    ' Если родитель найден в словаре
+    If dict.Exists(parentLevel) Then
+        DetermineFolderPath = dict(parentLevel) & "\" & folderName
+    Else
+        ' Если родитель не найден, создаем в базовой папке
+        DetermineFolderPath = basePath & folderName
+    End If
+End Function
+
+Function CleanFileName(name As String) As String
+    Dim invalidChars As String
+    Dim i As Integer
+    
+    invalidChars = "\/:*?""<>|"
+    CleanFileName = name
+    
+    For i = 1 To Len(invalidChars)
+        CleanFileName = Replace(CleanFileName, Mid(invalidChars, i, 1), "_")
+    Next i
+    
+    ' Удаляем лишние пробелы
+    CleanFileName = WorksheetFunction.Trim(CleanFileName)
+End Function
+
+Function FolderExists(path As String) As Boolean
+    FolderExists = (Dir(path, vbDirectory) <> "")
+End Function
+
+Sub CreateFolder(path As String)
+    On Error Resume Next
+    MkDir path
+    On Error GoTo 0
 End Sub
